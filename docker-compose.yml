@@ -31,14 +31,14 @@ services:
       dockerfile: Dockerfile
     container_name: go-service
     expose:
-      - "8001"
+      - "8081"
     networks:
       - app-network
     environment:
-      - PORT=8001
+      - PORT=8081
       - ENV=production
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8001/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -52,14 +52,14 @@ services:
       dockerfile: Dockerfile
     container_name: python-service
     expose:
-      - "8002"
+      - "8082"
     networks:
       - app-network
     environment:
-      - PORT=8002
+      - PORT=8082
       - ENV=production
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8002/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8082/health"]
       interval: 30s
       timeout: 10s
       retries: 3
