@@ -1,4 +1,4 @@
-module github.com/Abhishek72-avail/
+module github.com/Abhishek72-avail/Assignment
 
 go 1.21
 
