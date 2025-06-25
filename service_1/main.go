@@ -1,32 +1,35 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
+    "fmt"
+    "log"
+    "net/http"
+    "os"
 )
 
 func main() {
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		jsonResponse(w, map[string]string{
-			"status":  "ok",
-			"service": "1",
-		})
-	})
+    // Health check endpoint
+    http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("Service 1 (Go) is healthy"))
+    })
 
-	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
-		jsonResponse(w, map[string]string{
-			"message": "Hello from Service 1",
-		})
-	})
+    // Root endpoint
+    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("Hello from Go Service 1!"))
+    })
 
-	log.Println("Service 1 listening on port 8001...")
-	if err := http.ListenAndServe(":8001", nil); err != nil {
-		log.Fatalf("Server failed: %v", err)
-	}
-}
+    // Add your existing routes here...
+    // Example:
+    // http.HandleFunc("/api/users", usersHandler)
 
-func jsonResponse(w http.ResponseWriter, data map[string]string) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+    // Get port from environment variable, default to 8001
+    port := os.Getenv("PORT")
+    if port == "" {
+        port = "8001"
+    }
+
+    fmt.Printf("Go service starting on port %s\n", port)
+    log.Fatal(http.ListenAndServe(":"+port, nil))
 }

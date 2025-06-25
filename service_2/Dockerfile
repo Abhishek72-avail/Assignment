@@ -1,35 +1,40 @@
-FROM ubuntu:22.04
+# Use official Python runtime as base image
+FROM python:3.11-slim
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /app
 
-# Install Python and dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    wget \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
-
-# Copy requirements first for better caching
+# Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN useradd -r -u 1001 appuser
+# Create a non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Change ownership of the app directory
 RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
 USER appuser
 
 # Expose port
-EXPOSE 8082
+EXPOSE 8002
 
-# Health check using wget instead of curl
-HEALTHCHECK --interval=30s --timeout=3s --start-period=15s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8082/health || exit 1
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8002/health || exit 1
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8002
 
 # Run the application
-CMD ["python3", "app.py"]
+CMD ["python", "app.py"]
