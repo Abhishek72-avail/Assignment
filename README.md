@@ -1,324 +1,270 @@
-# DevOps Assignment: Nginx Reverse Proxy with Docker Compose
+# Nginx Reverse Proxy + Docker Assignment
 
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
-![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+This project demonstrates a Docker Compose setup with an Nginx reverse proxy routing requests to two backend services (Go and Python applications).
 
-A production-ready containerized system featuring Nginx reverse proxy routing to Go and Python microservices with comprehensive health monitoring and logging.
-
-## 🏗️ Architecture Overview
+## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐
-│   Client        │    │   Load Balancer │
-│   Requests      │───▶│   (Future)      │
-└─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                    ┌─────────────────┐
-                    │  Nginx Proxy    │
-                    │  (Port 8080)    │
-                    └─────────────────┘
-                            │
-            ┌───────────────┼───────────────┐
-            ▼               ▼               ▼
-    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐
-    │   /service1  │ │   /service2  │ │   /health    │
-    │              │ │              │ │              │
-    │  Go Service  │ │ Python Svc   │ │ Health Check │
-    │  (Port 8081) │ │ (Port 8082)  │ │              │
-    └──────────────┘ └──────────────┘ └──────────────┘
+Internet → Nginx (Port 8080) → Service 1 (Go - Port 8001)
+                             → Service 2 (Python - Port 8002)
+```
+
+## 📁 Project Structure
+
+```
+.
+├── docker-compose.yml          # Main orchestration file
+├── nginx/
+│   ├── nginx.conf             # Nginx configuration with routing
+│   └── Dockerfile             # Nginx container setup
+├── service_1/
+│   ├── Dockerfile             # Go application container
+│   ├── main.go                # Go source code
+│   ├── go.mod                 # Go dependencies
+│   └── go.sum
+├── service_2/
+│   ├── Dockerfile             # Python application container
+│   ├── app.py                 # Python source code
+│   └── requirements.txt       # Python dependencies
+└── README.md                  # This file
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose
-- Git
-- curl (for testing)
+- Docker installed and running
+- Docker Compose installed
+- Git (for version control)
 
-### One-Command Setup
-```bash
-# Clone and start
-git clone <your-repo-url>
-cd devops-assignment
-make dev  # or docker-compose up --build
-```
+### Setup Instructions
 
-### Manual Setup
-```bash
-# Build and start services
-docker-compose up --build -d
+1. **Clone or download the project**
+   ```bash
+   git clone <your-repo-url>
+   cd nginx-reverse-proxy-assignment
+   ```
 
-# Verify everything is working
-curl http://localhost:8080/health
-curl http://localhost:8080/service1
-curl http://localhost:8080/service2
-```
+2. **Build and start all services**
+   ```bash
+   docker-compose up --build
+   ```
 
-## 📊 Service Endpoints
+3. **Access the application**
+   - Main page: http://localhost:8080
+   - Go service: http://localhost:8080/service1/
+   - Python service: http://localhost:8080/service2/
+   - Nginx health: http://localhost:8080/nginx-health
 
-| Endpoint | Service | Description |
-|----------|---------|-------------|
-| `http://localhost:8080/` | Root | Welcome message and service list |
-| `http://localhost:8080/health` | Nginx | Health check endpoint |
-| `http://localhost:8080/service1` | Go App | Routes to Go microservice |
-| `http://localhost:8080/service2` | Python App | Routes to Python microservice |
+## 🔄 How Routing Works
 
-## 🔧 Configuration Details
+### Nginx Configuration
+- **Port 8080**: Single entry point for all requests
+- **Path-based routing**: Routes requests based on URL prefixes
+- **Load balancing**: Ready for multiple instances of each service
 
-### Routing Logic
-- **Path-based routing**: Requests are routed based on URL prefixes
-- **URL rewriting**: Service prefixes are stripped before forwarding
-- **Load balancing ready**: Configured for multiple backend instances
+### Route Mapping
+| URL Path | Destination | Internal Port |
+|----------|-------------|---------------|
+| `/service1/` | Go Application | 8001 |
+| `/service2/` | Python Application | 8002 |
+| `/nginx-health` | Nginx health check | - |
+| `/` | Welcome page with links | - |
 
-### Network Architecture
-- **Bridge networking**: All services communicate via Docker bridge network
-- **Service discovery**: Services communicate using container names
+### URL Rewriting
+- `/service1/api/users` → `service1:8001/api/users`
+- `/service2/data` → `service2:8002/data`
+
+The nginx configuration strips the service prefix before forwarding requests to maintain clean APIs.
+
+## 🔧 Technical Implementation
+
+### Docker Networking
+- **Bridge network**: All containers communicate via `app-network`
+- **Service discovery**: Containers reference each other by service name
 - **Port isolation**: Backend services only expose ports internally
 
-### Health Monitoring
-- **Multi-level health checks**: Nginx, Go service, and Python service
-- **Dependency management**: Nginx waits for backend services to be healthy
-- **Configurable intervals**: 30s intervals with 3 retry attempts
+### Health Checks
+- **Nginx**: `/nginx-health` endpoint
+- **Service 1 (Go)**: `/health` endpoint with 30s intervals
+- **Service 2 (Python)**: `/health` endpoint with 30s intervals
 
-## 📈 Monitoring & Logging
+### Logging
+- **Access logs**: Detailed format with timestamps, paths, and upstream info
+- **Error logs**: Comprehensive error tracking
+- **Log location**: `./nginx/logs/` (mounted volume)
 
-### Log Format
-```
-IP - User [Timestamp] "Request" Status Bytes "Referer" "User-Agent" 
-response_time upstream_connect_time upstream_header_time upstream_response_time upstream_addr
-```
+## 🔍 Monitoring and Debugging
 
-### Monitoring Commands
+### View logs in real-time
 ```bash
-# Real-time logs
-make logs                    # All services
-make logs-nginx             # Nginx only
-docker-compose logs -f      # Alternative
+# All services
+docker-compose logs -f
 
+# Specific service
+docker-compose logs -f nginx
+docker-compose logs -f service1
+docker-compose logs -f service2
+```
+
+### Check service health
+```bash
 # Container status
-make status                 # Detailed status with resource usage
-docker-compose ps          # Basic status
+docker-compose ps
 
-# Health checks
-make health                # Quick health verification
-make test                  # Comprehensive testing
+# Health check status
+docker inspect <container_name> | grep Health -A 10
 ```
 
-## 🛠️ Development Workflow
-
-### Using Makefile (Recommended)
+### Access nginx logs
 ```bash
-make help           # Show all available commands
-make dev            # Full development setup
-make test           # Run comprehensive tests
-make clean          # Clean up resources
+# Access logs
+tail -f nginx/logs/access.log
+
+# Error logs
+tail -f nginx/logs/error.log
 ```
 
-### Manual Commands
+## 🧪 Testing the Setup
+
+### Basic connectivity test
 ```bash
-# Development
-docker-compose up --build -d    # Start services
-docker-compose down             # Stop services
-docker-compose logs -f          # View logs
+# Test main page
+curl http://localhost:8080
 
-# Testing
-./test.sh                       # Automated testing
-curl http://localhost:8080/     # Manual testing
+# Test service 1
+curl http://localhost:8080/service1/
 
-# Debugging
-docker-compose exec nginx /bin/sh    # Access nginx container
-make debug-service1                  # Access go service container
+# Test service 2
+curl http://localhost:8080/service2/
+
+# Test nginx health
+curl http://localhost:8080/nginx-health
 ```
 
-## 🧪 Testing Strategy
-
-### Automated Testing
-The included `test.sh` script performs:
-- ✅ Health endpoint verification
-- ✅ Service routing validation
-- ✅ Container health status checks
-- ✅ Network connectivity testing
-- ✅ Load testing with multiple requests
-- ✅ Log verification
-
-### Manual Testing
+### Load testing (optional)
 ```bash
-# Basic connectivity
-curl http://localhost:8080/
-
-# Service routing
-curl http://localhost:8080/service1
-curl http://localhost:8080/service2
-
-# Health monitoring
-curl http://localhost:8080/health
-
-# Load testing
-for i in {1..100}; do curl -s http://localhost:8080/service1 & done; wait
+# Simple load test with curl
+for i in {1..10}; do curl http://localhost:8080/service1/ & done
 ```
 
-## 🔒 Security Features
-
-- **Non-root containers**: Services run as non-privileged users
-- **Network isolation**: Services communicate only through defined networks
-- **Security headers**: Proper HTTP headers for security
-- **Resource limits**: Configurable memory and CPU limits
-- **Log sanitization**: Secure logging without sensitive data exposure
-
-## 📦 Production Considerations
-
-### Scalability
-```bash
-# Scale services horizontally
-docker-compose up -d --scale service1=3 --scale service2=2
-
-# Using Makefile
-make scale-up    # Scale to 2 instances each
-make scale-down  # Scale back to 1 instance each
-```
-
-### Performance Optimizations
-- **Gzip compression**: Enabled for static content
-- **Keep-alive connections**: Persistent connections to backends
-- **Connection pooling**: Upstream keepalive configuration
-- **Efficient logging**: Structured logs with proper rotation
-
-### Monitoring Integration
-Ready for integration with:
-- **Prometheus**: Metrics collection
-- **Grafana**: Visualization dashboards  
-- **ELK Stack**: Centralized logging
-- **Jaeger**: Distributed tracing
-
-## 🐛 Troubleshooting
+## 🔧 Troubleshooting
 
 ### Common Issues
 
-**Services not starting:**
+1. **Port 8080 already in use**
+   ```bash
+   # Change port in docker-compose.yml
+   ports:
+     - "8081:80"  # Use 8081 instead
+   ```
+
+2. **Services not starting**
+   ```bash
+   # Check logs
+   docker-compose logs
+   
+   # Rebuild containers
+   docker-compose down
+   docker-compose up --build
+   ```
+
+3. **Cannot reach services**
+   ```bash
+   # Check network connectivity
+   docker-compose exec nginx ping service1
+   docker-compose exec nginx ping service2
+   ```
+
+### Debugging Commands
 ```bash
-# Check container status
-docker-compose ps
-
-# View detailed logs
-docker-compose logs service1
-docker-compose logs service2
-```
-
-**Port already in use:**
-```bash
-# Find process using port 8080
-lsof -i :8080
-# Kill the process or change port in docker-compose.yml
-```
-
-**Network connectivity issues:**
-```bash
-# Test internal network
-make network-test
-
-# Manual network check
-docker-compose exec nginx ping service1
-docker-compose exec nginx ping service2
-```
-
-**Health checks failing:**
-```bash
-# Check health check configuration
-docker inspect --format='{{json .State.Health}}' go-service
-
-# View health check logs
-docker-compose logs service1 | grep health
-```
-
-### Debug Mode
-```bash
-# Access container shells for debugging
-make debug-nginx     # Nginx container
-make debug-service1  # Go service container
-make debug-service2  # Python service container
+# Enter nginx container
+docker-compose exec nginx sh
 
 # Check nginx configuration
 docker-compose exec nginx nginx -t
+
+# Reload nginx configuration
+docker-compose exec nginx nginx -s reload
 ```
 
-## 📋 Bonus Features Implemented
+## 🎯 Bonus Features Implemented
 
-### ✅ Enhanced Logging
-- Detailed access logs with response times
-- Upstream server information
-- Request tracing capabilities
-- Structured log format for analysis
+### ✅ Health Checks
+- All services include health check endpoints
+- Docker health check integration
+- Automatic restart on failure
 
-### ✅ Comprehensive Health Checks
-- Application-level health endpoints
-- Container health monitoring
-- Dependency health verification
-- Configurable health check parameters
+### ✅ Comprehensive Logging
+- Detailed nginx access logs with timestamps and paths
+- Structured error logging
+- Log file persistence via volumes
 
-### ✅ Professional Automation
-- Makefile with 20+ commands
-- Automated testing script
-- CI/CD pipeline helpers
-- Development workflow optimization
+### ✅ Security Hardening
+- Non-root users in all containers
+- Minimal base images (Alpine Linux)
+- Proper file permissions
 
-### ✅ Production Readiness
-- Multi-stage Docker builds
-- Security best practices
-- Resource optimization
-- Scalability configuration
+### ✅ Clean Architecture
+- Modular Docker setup
+- Proper service isolation
+- Bridge networking (no host networking)
 
-### ✅ Monitoring & Observability
-- Real-time monitoring dashboard
-- Performance metrics collection
-- Log aggregation setup
-- Health status reporting
+## 🛑 Stopping the Application
 
-## 🔄 CI/CD Integration
-
-### GitHub Actions Example
-```yaml
-name: DevOps Assignment CI
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Run tests
-        run: make ci-test
-```
-
-### Pipeline Commands
 ```bash
-make ci-test        # CI/CD test pipeline
-make prod-check     # Production readiness verification
-make backup-logs    # Backup logs for analysis
+# Stop all services
+docker-compose down
+
+# Stop and remove all data
+docker-compose down -v
+
+# Stop and remove images
+docker-compose down --rmi all
 ```
 
-## 📚 Additional Resources
+## 📋 Development Notes
 
-- [Docker Compose Documentation](https://docs.docker.com/compose/)
-- [Nginx Configuration Guide](https://nginx.org/en/docs/)
-- [Container Health Checks](https://docs.docker.com/engine/reference/builder/#healthcheck)
-- [Docker Networking](https://docs.docker.com/network/)
+### Environment Variables
+- Services can be configured via environment variables in docker-compose.yml
+- Port numbers are configurable
+- Logging levels can be adjusted
+
+### Scaling Services
+```bash
+# Scale service 1 to 3 instances
+docker-compose up --scale service1=3
+
+# Scale service 2 to 2 instances
+docker-compose up --scale service2=2
+```
+
+### Network Configuration
+- All services run on isolated bridge network
+- No host networking used (as per requirements)
+- Services communicate via internal DNS resolution
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-## 📄 License
+## 📝 Assignment Completion Checklist
 
-This project is part of a DevOps internship assignment and is for educational purposes.
+- ✅ Docker Compose orchestration
+- ✅ Nginx reverse proxy in container
+- ✅ Path-based routing (`/service1`, `/service2`)
+- ✅ Single port access (8080)
+- ✅ Request logging with timestamps
+- ✅ Bridge networking (no host networking)
+- ✅ Health checks for all services
+- ✅ Clean modular Docker setup
+- ✅ Comprehensive documentation
 
 ---
 
-**Built with ❤️ for DevOps Excellence**
-
-*For questions or support, please refer to the troubleshooting section or create an issue.*
+**Project completed for DevOps Intern Assignment**  
+**Deployment**: Single command - `docker-compose up --build`  
+**Access**: http://localhost:8080
