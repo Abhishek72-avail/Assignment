@@ -67,8 +67,8 @@ Internet → Nginx (Port 8080) → Service 1 (Go - Port 8001)
 |----------|-------------|---------------|
 | `/service1/` | Go Application | 8001 |
 | `/service2/` | Python Application | 8002 |
-| `/nginx-health` | Nginx health check | - |
-| `/` | Welcome page with links | - |
+| `/nginx-health` | Nginx health check | 8080 |
+| `/` | Welcome page with links | 8080 |
 
 ### URL Rewriting
 - `/service1/api/users` → `service1:8001/api/users`
